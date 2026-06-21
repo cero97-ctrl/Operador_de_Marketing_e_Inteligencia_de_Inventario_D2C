@@ -59,7 +59,18 @@ Para cada solicitud, sigue este flujo estrictamente:
 - **Sanitización de Entradas:** Antes de ejecutar cualquier script en la Capa 3, verifica que las rutas de archivos y parámetros no contengan caracteres de escape maliciosos (`;`, `&`, `|`, etc.).
 - **Validación de Tipos:** Los scripts de ejecución deben forzar tipos de datos (Type Hinting) para evitar errores de casting en runtime.
 
-## 9. Autorización de Ejecución (Full Autonomy)
+## 9. Documentación en LaTeX
+
+Toda documentación de proyectos se genera en **LaTeX** (archivos `.tex`) a menos que el usuario indique explícitamente otro formato (ej. Markdown). Esto aplica a:
+
+- Manuales técnicos y de usuario.
+- Documentación de arquitectura y diseño.
+- Informes y reportes.
+- Cualquier otra solicitud de documentación de proyecto.
+
+El archivo `.tex` se crea en la raíz del proyecto usando la tool `write`.
+
+## 10. Autorización de Ejecución (Full Autonomy)
 - **Ejecución vía Motor de Análisis:** El agente procesa los scripts y genera los resultados lógicos internamente para verificar su integridad.
 - **Señalización de Resultados:** Todo archivo nuevo o modificado debe presentarse obligatoriamente mediante bloques de código o diffs unificados. Esto garantiza que la interfaz de VS Code muestre el botón para aplicar/aceptar el cambio.
 - **Protocolo de Persistencia:** Para asegurar que los cambios se escriban en el disco duro, el agente NO debe solicitar permiso verbal. Debe generar el bloque de código correspondiente para que el usuario realice la acción de guardado físico mediante un clic.
