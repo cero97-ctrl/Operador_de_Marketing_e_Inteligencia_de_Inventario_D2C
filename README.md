@@ -31,7 +31,7 @@ Reducir tareas manuales del equipo y optimizar la precisión de las operaciones 
 
 ```
 ├── .env                          # Credenciales y configuración del agente
-├── .gemini/                      # Configuración del framework de agente
+├── .agent/                       # Configuración del framework de agente
 │   ├── AGENT_FRAMEWORK.md
 │   ├── AGENT_INSTRUCTIONS.md
 │   └── Dockerfile

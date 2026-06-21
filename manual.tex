@@ -1,0 +1,500 @@
+\documentclass[a4paper,12pt]{article}
+
+% ---------- Paquetes ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{geometry}
+\geometry{top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm}
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue,
+    pdftitle={Manual del Proyecto - Operador de Marketing e Inteligencia de Inventario D2C},
+    pdfauthor={Sistema}
+}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{verbatim}
+
+% ---------- Configuración listings ----------
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny,
+    backgroundcolor=\color{gray!10},
+    rulecolor=\color{gray!30},
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!50!black},
+    stringstyle=\color{red!60!black}
+}
+
+% ---------- Encabezado / Pie ----------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\leftmark}
+\fancyhead[R]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ---------- Portada ----------
+\title{\Huge\textbf{Operador de Marketing e\\Inteligencia de Inventario D2C}\\[0.8cm]
+\Large Manual del Proyecto\\[0.3cm]
+\large Automatización de Marketing y Gestión de Inventario para Retail D2C}
+\author{Sistema de Agente IA --- Arquitectura de 3 Capas}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+\newpage
+
+\tableofcontents
+\newpage
+
+% ============================================================
+\section{Introducción}
+% ============================================================
+
+Este proyecto implementa un \textbf{agente de inteligencia artificial} especializado en la automatización de marketing y la gestión de inventario para una tienda \textbf{Direct-to-Consumer (D2C)} de ropa de golf. La tienda opera simultáneamente en \textbf{Shopify} (tienda online), \textbf{Whatnot} (ventas en vivo) y \textbf{Meta Ads} (publicidad).
+
+El objetivo central es \textbf{reducir las tareas manuales} del equipo humano y optimizar la precisión de las operaciones y el marketing mediante un sistema de alertas, borradores automáticos y sincronización de datos, manteniendo siempre la supervisión humana como paso obligatorio antes de cualquier acción ejecutable.
+
+\subsection{Propósito del Sistema}
+
+\begin{itemize}
+    \item Actuar como puente entre la intención del usuario y la ejecución técnica.
+    \item Separar la lógica probabilística (IA) de la ejecución determinista (scripts).
+    \item Proveer un marco reproducible, con estado trazable y capacidad de autocorrección.
+\end{itemize}
+
+\subsection{Stack Tecnológico}
+
+\begin{itemize}
+    \item \textbf{Lenguaje:} Python 3.12+
+    \item \textbf{Librerías principales:} ShopifyAPI, python-dotenv, psutil.
+    \item \textbf{Infraestructura:} Docker (sandbox para compilación nativa), Conda (gestión de entornos).
+    \item \textbf{Automatización:} Compatible con Zapier / Make.com.
+    \item \textbf{Memoria persistente:} ChromaDB.
+    \item \textbf{SO base:} Linux (Kernel compatible con Linux Mint).
+\end{itemize}
+
+% ============================================================
+\section{Estructura del Proyecto}
+% ============================================================
+
+La siguiente es la estructura de directorios del proyecto:
+
+\begin{lstlisting}
+.
++-- .agent/                      # Instrucciones de sistema y contexto del agente
+|   +-- AGENT_FRAMEWORK.md       # Arquitectura de 3 capas y setup
+|   +-- AGENT_INSTRUCTIONS.md    # Protocolo de agente y memoria evolutiva
+|   +-- Dockerfile               # Imagen para sandbox Docker
++-- .env                         # Credenciales y configuracion del agente
++-- .gitignore
++-- directives/                  # SOPs en YAML (Layer 1)
+|   +-- check_shopify_inventory.yaml
++-- docs/
+|   +-- OBJETIVO.md              # Prompt principal del agente
++-- execution/                   # Scripts deterministas en Python (Layer 3)
+|   +-- env_diagnostic.py
+|   +-- shopify_get_inventory.py
++-- requirements.txt             # Dependencias del proyecto
++-- git-update.sh                # Script de actualizacion Git
++-- update_repo.sh               # Script de sincronizacion de repositorio
++-- env_diagnostic.py            # Diagnostico de entorno
++-- README.md
++-- manual.tex                   # Este documento
+\end{lstlisting}
+
+\subsection{Descripción de Directorios}
+
+\begin{description}
+    \item[.agent/] Contiene las instrucciones del sistema y la definición del marco de trabajo del agente (arquitectura de 3 capas, protocolos de ejecución, memoria).
+    \item[directives/] Archivos YAML que actúan como Procedimientos Operativos Estandarizados (SOP). Cada flujo de trabajo repetible tiene su propia directiva.
+    \item[execution/] Scripts Python deterministas con una única responsabilidad. Son invocados por la capa de orquestación.
+    \item[.tmp/] Archivos temporales y estado de ejecución (regenerables).
+    \item[docs/] Documentación del proyecto.
+\end{description}
+
+% ============================================================
+\section{Arquitectura del Sistema}
+% ============================================================
+
+El sistema se basa en una \textbf{arquitectura de 3 capas} diseñada para maximizar la fiabilidad, separando la lógica probabilística del LLM de la ejecución determinista.
+
+\subsection{Capa 1: Directivas (directives/) --- \textit{Qué hacer}}
+
+Son SOPs en formato YAML, con un archivo por flujo de trabajo repetible. Cada directiva contiene:
+
+\begin{itemize}
+    \item \textbf{Goal:} Objetivo principal del flujo.
+    \item \textbf{Required inputs:} Lista de datos necesarios (nombre y descripción).
+    \item \textbf{Steps:} Secuencia de pasos que invocan scripts de execution/.
+    \item \textbf{Expected outputs:} Resultados esperados.
+    \item \textbf{Edge cases:} Casos límite y protocolos de recuperación.
+\end{itemize}
+
+Ejemplo de estructura de una directiva:
+
+\begin{lstlisting}
+goal: "Obtener niveles de stock actuales de Shopify"
+required_inputs:
+  - name: "inventory_threshold"
+    description: "Stock minimo antes de alertar (ej. 5)"
+steps:
+  - step: 1
+    description: "Consultar API de Shopify"
+    script: "execution/shopify_get_inventory.py"
+expected_outputs:
+  - "Archivo JSON en .tmp/inventory_report.json"
+edge_cases:
+  - case: "Error de conexion"
+    protocol: "Reintentar hasta 3 veces"
+\end{lstlisting}
+
+\subsection{Capa 2: Orquestación (El Agente) --- \textit{Toma de decisiones}}
+
+Esta capa es el \textbf{orquestador inteligente}. Sus funciones incluyen:
+
+\begin{itemize}
+    \item Leer la directiva apropiada para la tarea solicitada.
+    \item Elegir las herramientas de execution/.
+    \item Ejecutar flujos multietapa.
+    \item Validar entradas y salidas.
+    \item Gestionar errores y autocorrección (self-annealing).
+    \item Guardar estado en \texttt{.tmp/run\_state.json}.
+    \item Actualizar directivas con conocimiento aprendido.
+\end{itemize}
+
+\textbf{Regla fundamental:} No inventar lógica que deba vivir en los scripts. El agente conecta intención e implementación.
+
+\subsection{Capa 3: Ejecución (execution/) --- \textit{Hacer el trabajo}}
+
+Scripts Python deterministas con los siguientes requisitos:
+
+\begin{itemize}
+    \item Entradas por argumentos de línea de comandos.
+    \item Secretos en \texttt{.env} (nunca hardcodeados).
+    \item Salidas por stdout (preferiblemente en JSON).
+    \item Códigos de salida: 0 = éxito, 1+ = fallos categorizados.
+    \item Validación propia de salidas.
+    \item Fallo ruidoso ante condiciones anómalas.
+\end{itemize}
+
+% ============================================================
+\section{Configuración Inicial}
+% ============================================================
+
+\subsection{Requisitos Previos}
+
+\begin{itemize}
+    \item Python 3.12 o superior.
+    \item Conda (recomendado) o virtualenv.
+    \item Docker (para sandbox de compilación).
+    \item Acceso a Internet y a GitHub.
+\end{itemize}
+
+\subsection{Entorno Virtual}
+
+\begin{lstlisting}[language=bash]
+# Crear entorno Conda
+conda create --name d2c_env python=3.12 -y
+
+# Activar entorno
+conda activate d2c_env
+
+# Instalar dependencias
+pip install -r requirements.txt
+\end{lstlisting}
+
+\subsection{Docker Sandbox}
+
+Para ejecución de código C/C++ de forma aislada:
+
+\begin{lstlisting}[language=bash]
+docker build -t pcb_sandbox .agent/
+\end{lstlisting}
+
+\subsection{Archivo .env}
+
+El archivo \texttt{.env} contiene las credenciales necesarias:
+
+\begin{itemize}
+    \item \texttt{SHOPIFY\_SHOP\_URL} --- URL de la tienda Shopify.
+    \item \texttt{SHOPIFY\_ACCESS\_TOKEN} --- Token de acceso a la API de Shopify.
+    \item Claves de API para LLMs (Google, OpenAI, Anthropic, etc.).
+    \item Configuración de Telegram (bot token, chat ID).
+    \item Configuración de gestión de contexto (límites de mensajes y caracteres).
+\end{itemize}
+
+% ============================================================
+\section{Módulos y Funcionalidades}
+% ============================================================
+
+\subsection{Gestión de Inventario Shopify}
+
+El script \texttt{execution/shopify\_get\_inventory.py} consulta la API de Shopify y genera un reporte de inventario.
+
+\subsubsection{Uso}
+
+\begin{lstlisting}[language=bash]
+python execution/shopify_get_inventory.py --threshold 5
+\end{lstlisting}
+
+\subsubsection{Parámetros}
+
+\begin{description}
+    \item[--threshold] Nivel de stock por debajo del cual se considera ``bajo inventario'' (por defecto: 5).
+\end{description}
+
+\subsubsection{Salida}
+
+Genera un archivo JSON en \texttt{.tmp/inventory\_report.json} con la siguiente estructura:
+
+\begin{lstlisting}
+{
+  "out_of_stock": [
+    { "id": 123, "title": "Producto - Variante",
+      "sku": "GOLF-001", "stock": 0 }
+  ],
+  "low_stock": [
+    { "id": 456, "title": "Producto2 - Variante2",
+      "sku": "GOLF-002", "stock": 3 }
+  ],
+  "summary": { "total_checked": 150 }
+}
+\end{lstlisting}
+
+\subsubsection{Manejo de Errores}
+
+\begin{itemize}
+    \item \textbf{Error de conexión:} Reintentar hasta 3 veces.
+    \item \textbf{API Rate Limit:} Detectar header \texttt{Retry-After} y pausar automáticamente.
+    \item \textbf{Credenciales faltantes:} Mensaje de error claro en JSON.
+\end{itemize}
+
+\subsection{Alertas de Inventario y Publicidad}
+
+El sistema cruza el gasto en anuncios de Meta Ads contra el stock disponible en Shopify para:
+
+\begin{itemize}
+    \item Identificar anuncios activos de productos agotados o con bajo stock.
+    \item Generar \textbf{Alertas Prioritarias} cuando hay discrepancia entre gasto publicitario y stock.
+    \item Detectar productos recién repuestos para activar campañas de marketing.
+\end{itemize}
+
+\subsection{Generación de Contenido de Marketing}
+
+Basado en la disponibilidad de inventario, el agente genera borradores de:
+
+\begin{itemize}
+    \item Campañas de Email (flujos Klaviyo).
+    \item Anuncios para Meta (Facebook/Instagram).
+    \item Contenido para redes sociales.
+    \item SMS marketing.
+\end{itemize}
+
+Todo el contenido se alinea con la identidad de la marca de ropa de golf y está diseñado para ser atractivo para la comunidad del golf.
+
+\subsection{Asistente de Soporte al Cliente}
+
+El agente redacta borradores de respuesta a consultas de soporte extrayendo información de:
+
+\begin{itemize}
+    \item Pedidos de Shopify (estado, productos, fechas).
+    \item Políticas de la empresa (devoluciones, envíos).
+    \item Historial de respuestas anteriores.
+\end{itemize}
+
+El usuario solo debe revisar y enviar.
+
+\subsection{Sincronización Whatnot a Shopify}
+
+El sistema ayuda a estructurar la lógica para:
+
+\begin{itemize}
+    \item Mapear ventas realizadas en vivo en Whatnot hacia pedidos en Shopify.
+    \item Asegurar que los datos de inventario estén listos para imprimir hojas de stock para shows en vivo.
+\end{itemize}
+
+% ============================================================
+\section{Protocolo de Diagnóstico de Entorno}
+% ============================================================
+
+Antes de cualquier ejecución, el agente debe conocer el entorno real del sistema. El protocolo es:
+
+\begin{enumerate}
+    \item Generar \texttt{env\_diagnostic.py} que recolecte: SO, arquitectura, versión de Python, entorno Conda, paquetes críticos, RAM, CPU, GPU, permisos, conectividad.
+    \item El usuario ejecuta el script y pega la salida.
+    \item El agente ajusta su ejecución a las versiones y limitaciones confirmadas.
+    \item Si cambia el contexto de trabajo o surge un \texttt{ImportError}, solicitar nuevo diagnóstico.
+\end{enumerate}
+
+% ============================================================
+\section{Memoria Persistente (ChromaDB)}
+% ============================================================
+
+El agente utiliza ChromaDB para memoria persistente:
+
+\begin{itemize}
+    \item \textbf{Consulta inicial:} Antes de proponer una solución, consulta la memoria para experiencias pasadas.
+    \item \textbf{Registro de aprendizaje:} Errores críticos y limitaciones técnicas se guardan con \texttt{save\_memory.yaml}.
+    \item \textbf{Autocorrección:} Si un script falla, busca fallos similares antes de intentar una nueva solución.
+\end{itemize}
+
+Directivas disponibles:
+
+\begin{itemize}
+    \item \texttt{save\_memory.yaml} --- Guardar aprendizaje en memoria.
+    \item \texttt{query\_memory.yaml} --- Recuperar información relevante.
+    \item \texttt{list\_memories.yaml} --- Listar recuerdos recientes.
+    \item \texttt{delete\_memory.yaml} --- Eliminar un recuerdo por ID.
+\end{itemize}
+
+% ============================================================
+\section{Formato de Salida}
+% ============================================================
+
+\subsection{Borradores para Revisión Humana}
+
+Todo contenido generado por el agente (emails, publicaciones, respuestas de soporte) se presenta como \textbf{borrador}. El usuario mantiene el control final y debe aprobar antes de ejecutar.
+
+\subsection{Alertas Prioritarias}
+
+Cuando se detecta una discrepancia entre el gasto publicitario y el stock disponible, se genera una \textbf{Alerta Prioritaria} que se resalta en la salida para acción inmediata.
+
+\subsection{Estado de Ejecución}
+
+Cada paso de ejecución se registra en \texttt{.tmp/run\_state.json} con:
+
+\begin{itemize}
+    \item Timestamp.
+    \item Script ejecutado.
+    \item Código de salida (exit\_code).
+\end{itemize}
+
+% ============================================================
+\section{Mantenimiento y Git}
+% ============================================================
+
+\subsection{Scripts de Actualización}
+
+El proyecto incluye dos scripts para la gestión de versiones:
+
+\subsubsection{git-update.sh}
+
+Script principal que:
+\begin{enumerate}
+    \item Detecta la rama actual.
+    \item Commitea cambios locales con mensaje ``WIP: guardar cambios antes de pull''.
+    \item Delega en \texttt{update\_repo.sh}.
+\end{enumerate}
+
+\subsubsection{update\_repo.sh}
+
+Script de sincronización con soporte para:
+
+\begin{lstlisting}[language=bash]
+./update_repo.sh                    # Pull + commit + push
+./update_repo.sh --no-pull --push   # Solo commit y push
+./update_repo.sh --dry-run          # Vista previa sin ejecutar
+./update_repo.sh --confirm          # Modo interactivo con confirmacion
+./update_repo.sh -m "Mensaje"       # Mensaje de commit personalizado
+\end{lstlisting}
+
+\textbf{Parámetros:}
+
+\begin{description}
+    \item[-{}-dir DIR] Directorio del repositorio (por defecto: actual).
+    \item[-{}-remote REMOTE] Remote Git (por defecto: origin).
+    \item[-{}-branch BRANCH] Rama (por defecto: actual).
+    \item[-{}-push] Hacer push después del commit.
+    \item[-{}-no-pull] Omitir pull inicial.
+    \item[-{}-dry-run] Vista previa sin cambios.
+    \item[-{}-confirm] Modo interactivo.
+\end{description}
+
+% ============================================================
+\section{Principios de Operación}
+% ============================================================
+
+\subsection{Autocorrección (Self-Annealing)}
+
+\begin{itemize}
+    \item Presupuesto máximo de 3 reintentos por tarea.
+    \item Clasificar fallos en: \textbf{Lógica}, \textbf{Entorno} o \textbf{Recursos}.
+    \item Analizar causa raíz antes de corregir.
+    \item Fiabilidad sobre velocidad: mejor preguntar que continuar con datos inconsistentes.
+\end{itemize}
+
+\subsection{Reutilización}
+
+Antes de escribir un nuevo script, verificar si existe en \texttt{execution/} una herramienta que pueda reutilizarse.
+
+\subsection{Actualización de Directivas}
+
+Cada hallazgo (errores comunes, límites, mejoras) debe registrarse en las directivas sin sobrescribir versiones anteriores.
+
+\subsection{Validación Continua}
+
+Después de cada paso, confirmar:
+\begin{itemize}
+    \item Esquema correcto.
+    \item Cantidades coherentes.
+    \item Archivos en las rutas esperadas.
+    \item Tiempos y fechas razonables.
+\end{itemize}
+
+% ============================================================
+\section{Seguridad}
+% ============================================================
+
+\begin{itemize}
+    \item \textbf{Sanitización de entradas:} Verificar que rutas y parámetros no contengan caracteres de escape maliciosos (\texttt{;}, \texttt{\&}, \texttt{|}, etc.).
+    \item \textbf{Validación de tipos:} Los scripts deben forzar tipos de datos (Type Hinting) para evitar errores de casting en runtime.
+    \item \textbf{Credenciales:} Nunca hardcodear secretos en los scripts; usar \texttt{.env}.
+    \item \textbf{Aislamiento:} Uso de Docker para compilación de código no confiable.
+\end{itemize}
+
+% ============================================================
+\section{Apéndice: Dependencias}
+% ============================================================
+
+El archivo \texttt{requirements.txt} contiene:
+
+\begin{lstlisting}
+psutil
+python-dotenv
+ShopifyAPI
+\end{lstlisting}
+
+% ============================================================
+\section{Apéndice: Referencia Rápida de Comandos}
+% ============================================================
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Comando} & \textbf{Descripción} \\
+\hline
+\texttt{conda create -n d2c\_env python=3.12 -y} & Crear entorno \\
+\texttt{conda activate d2c\_env} & Activar entorno \\
+\texttt{pip install -r requirements.txt} & Instalar dependencias \\
+\texttt{python execution/shopify\_get\_inventory.py --threshold 5} & Consultar inventario \\
+\texttt{./git-update.sh} & Actualizar repositorio \\
+\texttt{./update\_repo.sh --dry-run} & Vista previa de actualización \\
+\texttt{docker build -t pcb\_sandbox .agent/} & Construir sandbox Docker \\
+\hline
+\end{tabular}
+\end{center}
+
+\end{document}
