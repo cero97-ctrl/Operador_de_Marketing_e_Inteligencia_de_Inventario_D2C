@@ -1,0 +1,18 @@
+goal: "Obtener los niveles de stock actuales de Shopify para identificar productos agotados o con bajo inventario."
+required_inputs:
+  - name: "inventory_threshold"
+    description: "El nivel de stock por debajo del cual se considera 'bajo inventario' (ej. 5)."
+steps:
+  - step: 1
+    description: "Cargar credenciales desde el archivo .env y consultar la API de Shopify."
+    script: "execution/shopify_get_inventory.py"
+    params:
+      - "--threshold"
+      - "inventory_threshold"
+expected_outputs:
+  - "Un archivo JSON en .tmp/inventory_report.json con la lista de productos y sus alertas."
+edge_cases:
+  - case: "Error de conexión con la API"
+    protocol: "Reintentar hasta 3 veces. Si persiste, emitir alerta crítica."
+  - case: "API Rate Limit"
+    protocol: "El script debe detectar el header Retry-After y pausar la ejecución automáticamente."
